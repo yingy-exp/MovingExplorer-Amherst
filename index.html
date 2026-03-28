@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nestmap — Housing & Daycare Finder</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400;1,600&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --cream: #F9F6F0;
+      --white: #FDFCFA;
+      --terra: #B85C3A;
+      --terra-dk: #9A4A2D;
+      --terra-lt: #F2E8E3;
+      --terra-mid: #D9896A;
+      --sage: #4D7A5E;
+      --sage-lt: #E3EDE7;
+      --dark: #1E1A15;
+      --mid: #4A443B;
+      --muted: #8A8078;
+      --border: #E8E2D9;
+      --border-dk: #D4CCBF;
+    }
+
+    html, body { height: 100%; overflow: hidden; font-family: 'DM Sans', sans-serif; background: var(--cream); color: var(--dark); -webkit-font-smoothing: antialiased; }
+
+    /* ─── ONBOARDING ─────────────────────────────────── */
+    #onboarding {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #1A1410;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .ob-bg {
+      position: absolute; inset: 0; pointer-events: none;
+      background:
+        radial-gradient(ellipse 70% 60% at 15% 55%, rgba(184,92,58,0.28) 0%, transparent 65%),
+        radial-gradient(ellipse 50% 40% at 85% 25%, rgba(77,122,94,0.18) 0%, transparent 55%),
+        radial-gradient(ellipse 60% 50% at 60% 80%, rgba(120,80,40,0.15) 0%, transparent 60%);
+    }
+    .ob-card {
+      position: relative; z-index: 1;
+      background: var(--white); border-radius: 18px; padding: 2.5rem 2.5rem 2rem;
+      width: 460px; max-width: 92vw;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.06), 0 28px 70px rgba(0,0,0,0.55);
+    }
+    .ob-progress { display: flex; gap: 5px; margin-bottom: 2rem; }
+    .ob-dot { flex: 1; height: 2.5px; border-radius: 2px; background: var(--border); transition: background 0.45s ease; }
+    .ob-dot.done { background: var(--terra); }
+    .ob-dot.active { background: var(--terra-mid); }
+
+    .ob-step { animation: ob-in 0.35s cubic-bezier(0.22,1,0.36,1) both; }
+    @keyframes ob-in { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:none; } }
+
+    .ob-eyebrow { font-size: 0.68rem; font-weight: 600; color: var(--terra); text-transform: uppercase; letter-spacing: 1.8px; margin-bottom: 0.4rem; }
+    .ob-heading { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 2rem; font-style: italic; font-weight: 400; line-height: 1.2; color: var(--dark); margin-bottom: 0.4rem; }
+    .ob-sub { font-size: 0.8rem; color: var(--muted); margin-bottom: 1.5rem; line-height: 1.55; }
+
+    .ob-options { display: grid; gap: 0.6rem; }
+    .ob-options.c3 { grid-template-columns: repeat(3, 1fr); }
+    .ob-opt {
+      padding: 0.85rem 0.75rem; border: 1.5px solid var(--border); border-radius: 10px;
+      background: var(--cream); cursor: pointer; text-align: center;
+      transition: border-color 0.14s, background 0.14s, transform 0.1s;
+      display: flex; flex-direction: column; align-items: center; gap: 0.22rem;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .ob-opt:hover { border-color: var(--terra-mid); background: var(--terra-lt); }
+    .ob-opt.sel { border-color: var(--terra); background: var(--terra-lt); }
+    .ob-opt:active { transform: scale(0.97); }
+    .ob-opt-icon { font-size: 1.35rem; line-height: 1; }
+    .ob-opt-label { font-size: 0.8rem; font-weight: 500; color: var(--dark); }
+    .ob-opt-hint { font-size: 0.68rem; color: var(--muted); }
+
+    .ob-price-display { text-align: center; margin-bottom: 1rem; }
+    .ob-price-num { font-family: 'Cormorant Garamond', serif; font-size: 2.8rem; color: var(--dark); line-height: 1; }
+    .ob-price-unit { font-size: 0.78rem; color: var(--muted); margin-left: 3px; }
+    input[type=range] { width: 100%; accent-color: var(--terra); cursor: pointer; }
+    .ob-range-labels { display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--muted); margin-top: 0.3rem; }
+
+    .ob-btn {
+      width: 100%; padding: 0.85rem 1.5rem; margin-top: 1.5rem;
+      background: var(--terra); color: #fff; border: none; border-radius: 10px;
+      font-family: 'DM Sans', sans-serif; font-size: 0.9rem; font-weight: 600;
+      cursor: pointer; transition: background 0.15s, transform 0.1s;
+      display: flex; align-items: center; justify-content: center; gap: 0.45rem;
+    }
+    .ob-btn:hover { background: var(--terra-dk); }
+    .ob-btn:active { transform: scale(0.98); }
+    .ob-btn:disabled { background: var(--border-dk); color: var(--muted); cursor: not-allowed; pointer-events: none; }
+
+    /* ─── APP LAYOUT ─────────────────────────────────── */
+    #app { display: none; height: 100vh; }
+    #app.on { display: flex; }
+
+    /* Left panel */
+    #left { width: 370px; flex-shrink: 0; display: flex; flex-direction: column; background: var(--white); border-right: 1px solid var(--border); overflow: hidden; z-index: 10; }
+
+    .panel-top { padding: 1rem 1.25rem 0.75rem; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .panel-brand { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem; }
+    .brand { font-family: 'Cormorant Garamond', serif; font-size: 1.35rem; color: var(--dark); letter-spacing: -0.2px; }
+    .brand em { color: var(--terra); font-style: italic; }
+    .edit-btn { background: none; border: none; font-size: 0.72rem; color: var(--terra); cursor: pointer; font-family: 'DM Sans', sans-serif; font-weight: 500; padding: 0; display: flex; align-items: center; gap: 0.2rem; }
+    .edit-btn:hover { text-decoration: underline; }
+
+    .pref-chips { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+    .pchip { padding: 0.18rem 0.55rem; background: var(--terra-lt); color: var(--terra); border-radius: 20px; font-size: 0.68rem; font-weight: 600; }
+
+    .results-bar { padding: 0.45rem 1.25rem; font-size: 0.73rem; color: var(--muted); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+
+    #housing-list { flex: 1; overflow-y: auto; padding: 0.625rem; }
+    #housing-list::-webkit-scrollbar { width: 3px; }
+    #housing-list::-webkit-scrollbar-thumb { background: var(--border-dk); border-radius: 2px; }
+
+    /* Housing card */
+    .hcard { background: var(--white); border-radius: 11px; border: 1.5px solid var(--border); margin-bottom: 0.55rem; cursor: pointer; overflow: hidden; transition: border-color 0.14s, box-shadow 0.14s; }
+    .hcard:hover { border-color: var(--border-dk); box-shadow: 0 3px 12px rgba(30,26,21,0.09); }
+    .hcard.active { border-color: var(--terra); box-shadow: 0 0 0 3px var(--terra-lt); }
+    .hcard-img { height: 108px; position: relative; overflow: hidden; }
+    .hcard-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .hcard-badge { position: absolute; top: 7px; left: 7px; padding: 2px 7px; border-radius: 5px; font-size: 0.62rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; background: rgba(253,252,250,0.9); color: var(--dark); }
+    .hcard-dcbadge { position: absolute; top: 7px; right: 7px; width: 13px; height: 13px; border-radius: 50%; border: 2.5px solid var(--white); box-shadow: 0 1px 4px rgba(0,0,0,0.22); }
+    .hcard-body { padding: 0.7rem 0.8rem; }
+    .hcard-price { font-family: 'Cormorant Garamond', serif; font-size: 1.3rem; color: var(--dark); line-height: 1; }
+    .hcard-price span { font-family: 'DM Sans', sans-serif; font-size: 0.7rem; color: var(--muted); font-weight: 400; }
+    .hcard-addr { font-size: 0.76rem; color: var(--mid); margin: 0.22rem 0 0.45rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .hcard-meta { display: flex; gap: 0.8rem; }
+    .hcard-meta-item { font-size: 0.7rem; color: var(--muted); }
+    .hcard-dc { margin-top: 0.45rem; padding: 0.3rem 0.45rem; background: var(--cream); border-radius: 5px; font-size: 0.68rem; color: var(--mid); display: flex; align-items: center; gap: 0.32rem; }
+    .dc-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .hcard-dc-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .empty { padding: 2rem 1rem; text-align: center; }
+    .empty-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+    .empty-t { font-size: 0.88rem; font-weight: 600; color: var(--dark); }
+    .empty-s { font-size: 0.75rem; color: var(--muted); margin-top: 0.25rem; line-height: 1.4; }
+
+    /* Map */
+    #mapwrap { flex: 1; position: relative; overflow: hidden; }
+    #map { position: absolute; inset: 0; }
+
+    /* Map controls */
+    .map-ctrl-row { position: absolute; top: 1rem; right: 1rem; z-index: 500; display: flex; gap: 0.45rem; }
+    .mctrl-btn { padding: 0.45rem 0.85rem; background: var(--white); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 2px 10px rgba(30,26,21,0.12); cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: 0.78rem; font-weight: 500; color: var(--dark); display: flex; align-items: center; gap: 0.3rem; transition: background 0.14s, box-shadow 0.14s; }
+    .mctrl-btn:hover { background: var(--cream); }
+    .mctrl-btn.on { background: var(--terra); color: #fff; border-color: var(--terra); }
+
+    /* UMass pin info */
+    #umass-label { position: absolute; top: 1rem; left: 50%; transform: translateX(-50%); z-index: 500; background: var(--white); border: 1px solid var(--border); border-radius: 8px; padding: 0.35rem 0.75rem; font-size: 0.72rem; color: var(--mid); box-shadow: 0 2px 10px rgba(30,26,21,0.1); display: flex; align-items: center; gap: 0.35rem; white-space: nowrap; }
+    #umass-label .star { color: var(--terra); font-size: 0.9rem; }
+
+    /* Commute banner */
+    #commute-banner { position: absolute; bottom: 1.5rem; left: 50%; transform: translateX(-50%); z-index: 500; background: var(--white); border: 1px solid var(--border); border-radius: 10px; padding: 0.55rem 1.1rem; box-shadow: 0 4px 18px rgba(30,26,21,0.14); font-size: 0.8rem; color: var(--dark); display: none; align-items: center; gap: 0.55rem; white-space: nowrap; }
+    #commute-banner.on { display: flex; }
+    .commute-close { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 1rem; line-height: 1; padding: 0; margin-left: 0.2rem; }
+
+    /* Legend */
+    #legend { position: absolute; bottom: 1.5rem; left: 1rem; z-index: 500; background: var(--white); border: 1px solid var(--border); border-radius: 10px; padding: 0.65rem 0.75rem; box-shadow: 0 2px 10px rgba(30,26,21,0.1); max-height: 190px; overflow-y: auto; min-width: 158px; max-width: 220px; }
+    #legend::-webkit-scrollbar { width: 3px; }
+    #legend::-webkit-scrollbar-thumb { background: var(--border-dk); }
+    .legend-hd { font-size: 0.62rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 0.45rem; }
+    .legend-row { display: flex; align-items: center; gap: 0.35rem; margin-bottom: 0.28rem; }
+    .legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .legend-name { font-size: 0.67rem; color: var(--mid); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
+
+    /* Daycare sidebar */
+    #dcsidebar { width: 0; overflow: hidden; flex-shrink: 0; background: var(--white); border-left: 1px solid var(--border); transition: width 0.28s cubic-bezier(0.4,0,0.2,1); z-index: 10; }
+    #dcsidebar.on { width: 278px; }
+    #dcsidebar-inner { width: 278px; height: 100%; padding: 1.25rem; overflow-y: auto; display: flex; flex-direction: column; }
+    .sb-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.1rem; padding-bottom: 0.8rem; border-bottom: 1px solid var(--border); }
+    .sb-title { font-family: 'Cormorant Garamond', serif; font-size: 1.15rem; color: var(--dark); }
+    .sb-close { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 1.15rem; line-height: 1; padding: 0; }
+    .sb-group { margin-bottom: 1.15rem; }
+    .sb-label { font-size: 0.68rem; font-weight: 600; color: var(--mid); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.45rem; display: flex; align-items: center; gap: 0.4rem; }
+    .sb-badge { background: var(--terra-lt); color: var(--terra); border-radius: 4px; padding: 0.1rem 0.4rem; font-size: 0.62rem; font-weight: 700; }
+    .sb-toggles { display: flex; gap: 0.35rem; }
+    .sb-tog { flex: 1; padding: 0.45rem 0.3rem; border: 1.5px solid var(--border); border-radius: 8px; background: var(--cream); cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: 0.7rem; font-weight: 500; color: var(--mid); text-align: center; transition: all 0.14s; }
+    .sb-tog:hover { border-color: var(--terra-mid); }
+    .sb-tog.on { border-color: var(--terra); background: var(--terra-lt); color: var(--terra); }
+    .sb-val { font-family: 'Cormorant Garamond', serif; font-size: 1.25rem; color: var(--dark); text-align: center; margin-bottom: 0.4rem; }
+    .sb-hint { font-size: 0.66rem; color: var(--muted); margin-top: 0.22rem; }
+    .sb-apply { margin-top: auto; padding-top: 1rem; }
+    .sb-apply button { width: 100%; padding: 0.72rem; background: var(--terra); color: #fff; border: none; border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 0.88rem; font-weight: 600; cursor: pointer; transition: background 0.14s; }
+    .sb-apply button:hover { background: var(--terra-dk); }
+
+    /* Leaflet overrides */
+    .leaflet-popup-content-wrapper { border-radius: 12px !important; box-shadow: 0 8px 30px rgba(30,26,21,0.18) !important; border: 1px solid var(--border) !important; padding: 0 !important; background: var(--white) !important; }
+    .leaflet-popup-content { margin: 0 !important; min-width: 235px; max-width: 280px; }
+    .leaflet-popup-tip { background: var(--white) !important; }
+    .pu { padding: 1rem 1.1rem 0.9rem; }
+    .pu-price { font-family: 'Cormorant Garamond', serif; font-size: 1.45rem; color: var(--dark); line-height: 1; }
+    .pu-price sup { font-family: 'DM Sans', sans-serif; font-size: 0.72rem; color: var(--muted); font-weight: 400; vertical-align: baseline; margin-left: 2px; }
+    .pu-addr { font-size: 0.76rem; color: var(--mid); margin: 0.22rem 0 0.6rem; }
+    .pu-pills { display: flex; gap: 0.35rem; margin-bottom: 0.65rem; }
+    .pu-pill { padding: 0.18rem 0.55rem; background: var(--cream); border-radius: 20px; font-size: 0.68rem; color: var(--mid); }
+    .pu-commute { background: var(--cream); border-radius: 7px; padding: 0.45rem 0.6rem; font-size: 0.76rem; color: var(--dark); display: flex; align-items: center; gap: 0.45rem; min-height: 32px; }
+    .pu-dc { margin-top: 0.55rem; padding-top: 0.5rem; border-top: 1px solid var(--border); font-size: 0.7rem; color: var(--muted); display: flex; align-items: center; gap: 0.35rem; }
+    .pu-dc .dc-dot { width: 8px; height: 8px; }
+
+    /* Subtle loading pulse */
+    .pulse { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--terra); animation: pulse-anim 1.2s ease-in-out infinite; margin-right: 6px; }
+    @keyframes pulse-anim { 0%,100% { opacity:0.3; transform:scale(0.8); } 50% { opacity:1; transform:scale(1); } }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════
+     ONBOARDING
+══════════════════════════════════════ -->
+<div id="onboarding">
+  <div class="ob-bg"></div>
+  <div class="ob-card">
+    <div class="ob-progress">
+      <div class="ob-dot" id="dot0"></div>
+      <div class="ob-dot" id="dot1"></div>
+      <div class="ob-dot" id="dot2"></div>
+    </div>
+    <div id="ob-content"></div>
+    <button class="ob-btn" id="ob-btn" onclick="obNext()" disabled>
+      <span id="ob-btn-lbl">Continue</span> <span>→</span>
+    </button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     APP
+══════════════════════════════════════ -->
+<div id="app">
+  <!-- Left panel -->
+  <div id="left">
+    <div class="panel-top">
+      <div class="panel-brand">
+        <div class="brand">Nest<em>map</em></div>
+        <button class="edit-btn" onclick="restartOnboarding()">✎ Edit preferences</button>
+      </div>
+      <div class="pref-chips" id="pchips"></div>
+    </div>
+    <div class="results-bar" id="rbar">—</div>
+    <div id="housing-list"></div>
+  </div>
+
+  <!-- Map -->
+  <div id="mapwrap">
+    <div id="map"></div>
+    <div id="umass-label"><span class="star">★</span> UMass Math &amp; Statistics Dept</div>
+    <div class="map-ctrl-row">
+      <button class="mctrl-btn" id="dc-toggle-btn" onclick="toggleSidebar()">🏫 Daycare filters</button>
+    </div>
+    <div id="commute-banner">
+      <span>🚗</span>
+      <span id="commute-text">Calculating…</span>
+      <button class="commute-close" onclick="clearRoute()" title="Clear route">×</button>
+    </div>
+    <div id="legend">
+      <div class="legend-hd">Nearest daycare</div>
+      <div id="legend-rows"></div>
+    </div>
+  </div>
+
+  <!-- Daycare sidebar -->
+  <div id="dcsidebar">
+    <div id="dcsidebar-inner">
+      <div class="sb-head">
+        <div class="sb-title">Daycare filters</div>
+        <button class="sb-close" onclick="toggleSidebar()">×</button>
+      </div>
+      <div class="sb-group">
+        <div class="sb-label">Type <span class="sb-badge" id="dc-count-badge">—</span></div>
+        <div class="sb-toggles">
+          <button class="sb-tog on" id="dcf-all"    onclick="setDcType('all')">All</button>
+          <button class="sb-tog"    id="dcf-family" onclick="setDcType('family')">In-home</button>
+          <button class="sb-tog"    id="dcf-center" onclick="setDcType('center')">Center</button>
+        </div>
+      </div>
+
+      <div class="sb-group">
+        <div class="sb-label">Child's age</div>
+        <div class="sb-val" id="dcf-age-val">Any age</div>
+        <input type="range" min="0" max="12" step="1" value="12" id="dcf-age" oninput="onDcAge(this.value)">
+        <div class="sb-hint">Show daycares that accept this age</div>
+      </div>
+
+      <div class="sb-group">
+        <div class="sb-label">Monthly price</div>
+        <div class="sb-val" id="dcf-price-val">Any price</div>
+        <input type="range" min="500" max="3000" step="100" value="3000" id="dcf-price" oninput="onDcPrice(this.value)">
+        <div class="sb-hint">Daycares with unknown pricing always shown</div>
+      </div>
+      <div class="sb-apply"><button onclick="applyDcFilters()">Apply daycare filters</button></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin></script>
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════════════════════════════════
+const UMASS = { lat: 42.3912, lng: -72.5261 };
+
+// ═══════════════════════════════════════════════════════════════════
+// DATA — loaded from CSVs at startup
+// ═══════════════════════════════════════════════════════════════════
+let DAYCARES = [];
+let HOUSING  = [];
+
+// ─── CSV parser ────────────────────────────────────────────────────
+function parseCSVRow(line) {
+  const result = [];
+  let field = '', inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') {
+      if (inQuotes && line[i + 1] === '"') { field += '"'; i++; }
+      else inQuotes = !inQuotes;
+    } else if (c === ',' && !inQuotes) {
+      result.push(field); field = '';
+    } else {
+      field += c;
+    }
+  }
+  result.push(field);
+  return result;
+}
+
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  const headers = parseCSVRow(lines[0]).map(h => h.trim());
+  return lines.slice(1).filter(l => l.trim()).map(line => {
+    const vals = parseCSVRow(line);
+    const obj = {};
+    headers.forEach((h, i) => { obj[h] = (vals[i] ?? '').trim(); });
+    return obj;
+  });
+}
+
+function transformDaycare(row, idx) {
+  // Parse price from "1980/month", "2354/day", or plain number
+  const rawPrice = row['Price'] || row['price'] || '';
+  const priceNum = parseFloat(rawPrice.replace(/[^0-9.]/g, '')) || 0;
+  const isDaily  = /day/i.test(rawPrice);
+  const price    = isDaily ? 0 : Math.round(priceNum); // skip ambiguous day rates
+
+  const addrFull = row['Address'] || row['Program Address 1'] || '';
+  const addrParts = addrFull.split(',');
+  const address = addrParts[0].trim();
+
+  return {
+    id:       `dc${idx + 1}`,
+    name:     row['Daycare'] || row['Program Name'],
+    address,
+    town:     row['Town'],
+    type:     row['Program Type'],
+    capacity: parseInt(row['Capacity']) || 0,
+    lat:      parseFloat(row['lat']),
+    lng:      parseFloat(row['lng']),
+    price,
+    minAge:   parseInt(row['minAge']) || 0,
+    maxAge:   parseInt(row['maxAge']) || 12,
+    link:     row['Link'] || '',
+    notes:    row['Notes'] || '',
+  };
+}
+
+function transformHousing(row, idx) {
+  const rentNums = (row['Rent'] || '0').replace(/\s/g, '').split('-').map(Number).filter(Boolean);
+  const rentMin = rentNums[0] || 0;
+  const rentMax = rentNums.length > 1 ? rentNums[1] : rentMin;
+
+  const sqftParts = (row['Area (sq ft)'] || '').replace(/\s/g, '').split('-');
+  const sqft = sqftParts.length > 1
+    ? `${sqftParts[0]}–${sqftParts[1]} sq ft`
+    : sqftParts[0] ? `${sqftParts[0]} sq ft` : '';
+
+  const addrFull = row['Address'] || '';
+  const addrParts = addrFull.split(',');
+  const addr = addrParts[0].trim();
+  const town = row['Town'] || addrParts[1]?.trim() || '';
+
+  return {
+    id: `h${idx + 1}`,
+    name: row['Apartment Name'],
+    addr,
+    town,
+    type: row['Property type'],
+    bed: parseInt(row['Number of beds']) || 2,
+    rentMin,
+    rentMax,
+    sqft,
+    washer: row['Washer/Dryer Setup'] || '',
+    link: row['Link'] || '',
+    notes: row['Additional'] || '',
+    lat: parseFloat(row['lat']),
+    lng: parseFloat(row['lng']),
+  };
+}
+
+async function loadData() {
+  const opts = { cache: 'no-store' };
+  const [dcText, hText] = await Promise.all([
+    fetch('Databases/Daycare Amherst - Sheet1.csv', opts).then(r => r.text()),
+    fetch('Databases/Amherst Housing 2026 - Sheet1.csv', opts).then(r => r.text()),
+  ]);
+  DAYCARES = parseCSV(dcText).map(transformDaycare);
+  HOUSING  = parseCSV(hText).map(transformHousing);
+}
+
+
+// ═══════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════
+const S = {
+  obStep: 0,
+  prefs: { typeChoice: null, bedChoice: null, maxRent: 2500 },
+  dcFilters: { type: 'all', maxAge: 12, maxPrice: 3000 },
+  selectedId: null,
+  visHousing: [],
+  visDaycares: [],
+  colorMap: {},       // dc.id → color string
+  map: null,
+  hMarkers: {},       // houseId → L.marker
+  dcMarkers: [],      // array of L.marker
+  umassMarker: null,
+  routeLayer: null,
+  routeAbortCtrl: null,
+  openPopupMarker: null,
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════════════════════
+function kmBetween(la1, lo1, la2, lo2) {
+  const R = 6371, d1 = (la2-la1)*Math.PI/180, d2 = (lo2-lo1)*Math.PI/180;
+  const a = Math.sin(d1/2)**2 + Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(d2/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function genColor(idx) {
+  const hue = Math.round((idx * 137.508) % 360);
+  return `hsl(${hue},62%,48%)`;
+}
+
+function fmtPrice(n) { return '$' + n.toLocaleString(); }
+
+function fmtRent(h) {
+  if (h.rentMin === h.rentMax) return fmtPrice(h.rentMin);
+  return `${fmtPrice(h.rentMin)}–${fmtPrice(h.rentMax)}`;
+}
+
+function displayName(h) {
+  return (h.name && h.name !== 'NA') ? h.name : h.addr;
+}
+
+function displayAddr(h) {
+  return [h.addr, h.town, 'MA'].filter(Boolean).join(', ');
+}
+
+// Distance from point P to line-segment A→B (in km, using lat/lng as planar approx)
+function ptToSegKm(p, a, b) {
+  const dx = b.lng - a.lng, dy = b.lat - a.lat;
+  const lenSq = dx*dx + dy*dy;
+  if (lenSq === 0) return kmBetween(p.lat, p.lng, a.lat, a.lng);
+  const t = Math.max(0, Math.min(1, ((p.lng-a.lng)*dx + (p.lat-a.lat)*dy) / lenSq));
+  return kmBetween(p.lat, p.lng, a.lat + t*dy, a.lng + t*dx);
+}
+
+// Is a daycare within bufferKm of the straight corridor house→UMass?
+function inCorridor(house, dc, bufferKm) {
+  return ptToSegKm({lat: dc.lat, lng: dc.lng}, house, UMASS) <= bufferKm;
+}
+
+// Build the "on the way" section HTML for the popup
+function buildOnWayHtml(list) {
+  if (!list.length) return '';
+  const rows = list.slice(0, 5).map(({dc, detourSecs}) => {
+    const mins = Math.round(detourSecs / 60);
+    const color = S.colorMap[dc.id] || '#999';
+    const label = dc.name.length > 30 ? dc.name.slice(0, 29) + '…' : dc.name;
+    return `<div style="display:flex;align-items:center;gap:0.35rem;margin-bottom:0.2rem">
+      <span style="width:7px;height:7px;border-radius:50%;background:${color};flex-shrink:0;display:inline-block"></span>
+      <span style="font-size:0.7rem;color:var(--mid);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${label}</span>
+      <span style="font-size:0.7rem;color:var(--sage);font-weight:600;white-space:nowrap">+${mins} min</span>
+    </div>`;
+  }).join('');
+  return `<div style="margin-top:0.55rem;padding-top:0.5rem;border-top:1px solid var(--border)">
+    <div style="font-size:0.62rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:0.38rem">On the way (≤10 min detour)</div>
+    ${rows}
+  </div>`;
+}
+
+// Use OSRM table API to find daycares within a ≤600s detour of the direct commute
+async function findOnWayDaycares(house, directSecs, signal) {
+  const activeDcs = S.visDaycares.length ? S.visDaycares : DAYCARES;
+
+  // Restrict to daycares geometrically within a 12km corridor
+  const candidates = activeDcs
+    .filter(dc => inCorridor(house, dc, 12))
+    .sort((a, b) => kmBetween(house.lat, house.lng, a.lat, a.lng)
+                  - kmBetween(house.lat, house.lng, b.lat, b.lng))
+    .slice(0, 22); // cap at 22 to keep URLs reasonable
+
+  if (!candidates.length) return [];
+
+  const N = candidates.length;
+  const coordStr = [
+    `${house.lng},${house.lat}`,
+    ...candidates.map(dc => `${dc.lng},${dc.lat}`),
+    `${UMASS.lng},${UMASS.lat}`,
+  ].join(';');
+
+  const dcIdx = Array.from({length: N}, (_, i) => i + 1).join(',');
+  const umassIdx = N + 1;
+
+  // Two table calls in parallel: house→each_dc  AND  each_dc→UMass
+  const [r1, r2] = await Promise.all([
+    fetch(`https://router.project-osrm.org/table/v1/driving/${coordStr}?sources=0&destinations=${dcIdx}`, { signal }),
+    fetch(`https://router.project-osrm.org/table/v1/driving/${coordStr}?sources=${dcIdx}&destinations=${umassIdx}`, { signal }),
+  ]);
+  const [d1, d2] = await Promise.all([r1.json(), r2.json()]);
+
+  const results = [];
+  candidates.forEach((dc, i) => {
+    const hToDc   = d1.durations?.[0]?.[i];
+    const dcToU   = d2.durations?.[i]?.[0];
+    if (hToDc == null || dcToU == null) return;
+    const detour = (hToDc + dcToU) - directSecs;
+    if (detour >= 0 && detour <= 600) results.push({ dc, detourSecs: detour });
+  });
+
+  return results.sort((a, b) => a.detourSecs - b.detourSecs);
+}
+
+function nearestDc(house, daycares) {
+  let best = null, bestD = Infinity;
+  daycares.forEach(dc => {
+    const d = kmBetween(house.lat, house.lng, dc.lat, dc.lng);
+    if (d < bestD) { bestD = d; best = dc; }
+  });
+  return { dc: best, km: bestD };
+}
+
+function cardSvgUrl(type, color) {
+  const shapes = (type === 'House' || type === 'Townhome')
+    ? `<polygon points="50,8 93,42 93,84 7,84 7,42" fill="rgba(255,255,255,0.14)"/>
+       <rect x="35" y="58" width="14" height="26" fill="rgba(255,255,255,0.1)"/>
+       <rect x="54" y="56" width="12" height="13" rx="1" fill="rgba(255,255,255,0.1)"/>`
+    : `<rect x="10" y="22" width="80" height="62" fill="rgba(255,255,255,0.13)"/>
+       <rect x="16" y="30" width="11" height="10" fill="rgba(255,255,255,0.16)"/>
+       <rect x="31" y="30" width="11" height="10" fill="rgba(255,255,255,0.16)"/>
+       <rect x="46" y="30" width="11" height="10" fill="rgba(255,255,255,0.16)"/>
+       <rect x="61" y="30" width="11" height="10" fill="rgba(255,255,255,0.16)"/>
+       <rect x="16" y="46" width="11" height="10" fill="rgba(255,255,255,0.16)"/>
+       <rect x="31" y="46" width="11" height="10" fill="rgba(255,255,255,0.16)"/>
+       <rect x="46" y="46" width="11" height="10" fill="rgba(255,255,255,0.16)"/>
+       <rect x="61" y="46" width="11" height="10" fill="rgba(255,255,255,0.16)"/>
+       <rect x="36" y="60" width="28" height="24" fill="rgba(255,255,255,0.1)"/>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <rect width="100" height="100" fill="${color}" opacity="0.88"/>
+    <rect width="100" height="100" fill="url(#sh)" opacity="0.35"/>
+    <defs><linearGradient id="sh" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.35"/>
+    </linearGradient></defs>
+    ${shapes}</svg>`;
+  return 'data:image/svg+xml,' + encodeURIComponent(svg);
+}
+
+function houseIcon(color, isSelected) {
+  const s = isSelected ? 20 : 14;
+  const border = isSelected ? 3.5 : 2.5;
+  return L.divIcon({
+    html: `<div style="width:${s}px;height:${s}px;border-radius:50%;background:${color};border:${border}px solid #FDFCFA;box-shadow:0 2px 8px rgba(0,0,0,0.28);transition:all .2s"></div>`,
+    className: '', iconSize: [s, s], iconAnchor: [s/2, s/2]
+  });
+}
+
+function dcIcon(color) {
+  return L.divIcon({
+    html: `<div style="width:11px;height:11px;background:${color};transform:rotate(45deg);border:2px solid #FDFCFA;box-shadow:0 1px 5px rgba(0,0,0,0.25)"></div>`,
+    className: '', iconSize: [11, 11], iconAnchor: [5.5, 5.5]
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ONBOARDING
+// ═══════════════════════════════════════════════════════════════════
+function renderObStep() {
+  const step = S.obStep;
+  const p = S.prefs;
+
+  // Progress dots
+  [0,1,2].forEach(i => {
+    document.getElementById('dot'+i).className =
+      'ob-dot' + (i < step ? ' done' : i === step ? ' active' : '');
+  });
+
+  const container = document.getElementById('ob-content');
+  let html = '<div class="ob-step">';
+
+  if (step === 0) {
+    html += `<div class="ob-eyebrow">Step 1 of 3</div>
+    <div class="ob-heading">What type of home<br>are you looking for?</div>
+    <div class="ob-sub">We'll show available rentals near UMass Amherst, color-coded by proximity to daycares.</div>
+    <div class="ob-options c3">
+      <button class="ob-opt ${p.typeChoice==='House'?'sel':''}" onclick="setPref('typeChoice','House')">
+        <span class="ob-opt-icon">🏠</span><span class="ob-opt-label">House</span>
+      </button>
+      <button class="ob-opt ${p.typeChoice==='Apartment'?'sel':''}" onclick="setPref('typeChoice','Apartment')">
+        <span class="ob-opt-icon">🏢</span><span class="ob-opt-label">Apartment</span>
+      </button>
+      <button class="ob-opt ${p.typeChoice==='Either'?'sel':''}" onclick="setPref('typeChoice','Either')">
+        <span class="ob-opt-icon">🏘️</span><span class="ob-opt-label">Either</span>
+      </button>
+    </div>`;
+  } else if (step === 1) {
+    html += `<div class="ob-eyebrow">Step 2 of 3</div>
+    <div class="ob-heading">How many bedrooms<br>do you need?</div>
+    <div class="ob-sub">2 and 3-bedroom rentals are available across the Pioneer Valley.</div>
+    <div class="ob-options c3">
+      <button class="ob-opt ${p.bedChoice===2?'sel':''}" onclick="setPref('bedChoice',2)">
+        <span class="ob-opt-icon">🛏️</span><span class="ob-opt-label">2 bedrooms</span>
+      </button>
+      <button class="ob-opt ${p.bedChoice===3?'sel':''}" onclick="setPref('bedChoice',3)">
+        <span class="ob-opt-icon">🛏️🛏️</span><span class="ob-opt-label">3 bedrooms</span>
+      </button>
+      <button class="ob-opt ${p.bedChoice==='Either'?'sel':''}" onclick="setPref('bedChoice','Either')">
+        <span class="ob-opt-icon">✨</span><span class="ob-opt-label">Either</span>
+      </button>
+    </div>`;
+  } else {
+    html += `<div class="ob-eyebrow">Step 3 of 3</div>
+    <div class="ob-heading">What's your monthly<br>budget for rent?</div>
+    <div class="ob-sub">Amherst-area rents typically range $1,400–$3,000/mo. Set your maximum.</div>
+    <div class="ob-price-display">
+      <span class="ob-price-num" id="ob-price-num">${fmtPrice(p.maxRent)}</span>
+      <span class="ob-price-unit">/mo max</span>
+    </div>
+    <input type="range" min="1000" max="4000" step="100" value="${p.maxRent}" oninput="updateRent(this.value)">
+    <div class="ob-range-labels"><span>$1,000</span><span>$2,000</span><span>$3,000</span><span>$4,000</span></div>`;
+  }
+
+  html += '</div>';
+  container.innerHTML = html;
+
+  const btn = document.getElementById('ob-btn');
+  const lbl = document.getElementById('ob-btn-lbl');
+  lbl.textContent = step === 2 ? 'Show me the map' : 'Continue';
+  btn.disabled = step === 0 ? !p.typeChoice : step === 1 ? !p.bedChoice && p.bedChoice !== 'Either' : false;
+  if (step === 2) btn.disabled = false;
+}
+
+function setPref(key, val) {
+  S.prefs[key] = val;
+  renderObStep();
+}
+
+function updateRent(v) {
+  S.prefs.maxRent = +v;
+  const el = document.getElementById('ob-price-num');
+  if (el) el.textContent = fmtPrice(+v);
+}
+
+function obNext() {
+  if (S.obStep < 2) {
+    S.obStep++;
+    renderObStep();
+  } else {
+    launchApp();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// LAUNCH APP
+// ═══════════════════════════════════════════════════════════════════
+function launchApp() {
+  document.getElementById('onboarding').style.display = 'none';
+  const app = document.getElementById('app');
+  app.classList.add('on');
+
+  if (!S.map) initMap();
+
+  applyAllFilters();
+}
+
+function restartOnboarding() {
+  S.obStep = 0;
+  S.prefs = { typeChoice: null, bedChoice: null, maxRent: 2500 };
+  document.getElementById('app').classList.remove('on');
+  document.getElementById('onboarding').style.display = 'flex';
+  renderObStep();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// MAP INIT
+// ═══════════════════════════════════════════════════════════════════
+function initMap() {
+  S.map = L.map('map', { zoomControl: true }).setView([42.365, -72.565], 11);
+
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>',
+    subdomains: 'abcd', maxZoom: 19
+  }).addTo(S.map);
+
+  // UMass marker
+  const umassIcon = L.divIcon({
+    html: `<div style="background:#B85C3A;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.3)">★</div>`,
+    className: '', iconSize: [22, 22], iconAnchor: [11, 11]
+  });
+  S.umassMarker = L.marker([UMASS.lat, UMASS.lng], { icon: umassIcon, zIndexOffset: 1000 })
+    .addTo(S.map)
+    .bindTooltip('UMass Math &amp; Statistics', { permanent: false, direction: 'top' });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// FILTERS & RENDERING
+// ═══════════════════════════════════════════════════════════════════
+function applyAllFilters() {
+  const p = S.prefs;
+  const df = S.dcFilters;
+
+  // Filter housing
+  S.visHousing = HOUSING.filter(h => {
+    if (p.typeChoice && p.typeChoice !== 'Either') {
+      // Townhome maps to the "House" category
+      const cat = h.type === 'Townhome' ? 'House' : h.type;
+      if (cat !== p.typeChoice) return false;
+    }
+    if (p.bedChoice && p.bedChoice !== 'Either' && h.bed !== p.bedChoice) return false;
+    if (h.rentMin > p.maxRent) return false;
+    return true;
+  });
+
+  // Filter daycares
+  const HIDDEN_TOWNS = new Set(['Granby','Shutesbury','Leverett','Hatfield']);
+  S.visDaycares = DAYCARES.filter(dc => {
+    if (HIDDEN_TOWNS.has(dc.town)) return false;
+    if (df.type === 'family' && dc.type !== 'Family Child Care') return false;
+    if (df.type === 'center' && dc.type !== 'Large Group') return false;
+    // df.maxAge is the child's age; hide daycares whose age range doesn't include it
+    if (df.maxAge < 12 && (dc.minAge > df.maxAge || dc.maxAge < df.maxAge)) return false;
+    // price: skip daycares over budget; price=0 means unknown, always show
+    if (df.maxPrice < 3000 && dc.price > 0 && dc.price > df.maxPrice) return false;
+    return true;
+  });
+
+  // Assign colors
+  S.colorMap = {};
+  S.visDaycares.forEach((dc, i) => { S.colorMap[dc.id] = genColor(i); });
+
+  clearRoute();
+  renderMarkers();
+  renderHousingList();
+  updateLegend();
+  updatePrefChips();
+  updateDcBadge();
+}
+
+function clearAllMarkers() {
+  Object.values(S.hMarkers).forEach(m => S.map.removeLayer(m));
+  S.hMarkers = {};
+  S.dcMarkers.forEach(m => S.map.removeLayer(m));
+  S.dcMarkers = [];
+}
+
+function renderMarkers() {
+  if (!S.map) return;
+  clearAllMarkers();
+
+  // Daycare markers (diamonds)
+  S.visDaycares.forEach(dc => {
+    const color = S.colorMap[dc.id];
+    const m = L.marker([dc.lat, dc.lng], { icon: dcIcon(color), zIndexOffset: 0 })
+      .addTo(S.map)
+      .bindTooltip(`<strong>${dc.name}</strong><br>${dc.address}, ${dc.town}<br><em>${dc.type}</em>${dc.price ? `<br>$${dc.price.toLocaleString()}/mo` : ''}`, { direction: 'top' });
+    S.dcMarkers.push(m);
+  });
+
+  // Housing markers (circles)
+  S.visHousing.forEach(h => {
+    const { dc } = nearestDc(h, S.visDaycares.length ? S.visDaycares : DAYCARES);
+    const color = dc ? (S.colorMap[dc.id] || '#999') : '#999';
+    const isSelected = h.id === S.selectedId;
+    const m = L.marker([h.lat, h.lng], { icon: houseIcon(color, isSelected), zIndexOffset: 100 })
+      .addTo(S.map);
+    m.on('click', () => selectHouse(h.id));
+    S.hMarkers[h.id] = m;
+  });
+}
+
+function renderHousingList() {
+  const list = document.getElementById('housing-list');
+  const rbar = document.getElementById('rbar');
+
+  if (!S.visHousing.length) {
+    rbar.textContent = 'No results';
+    list.innerHTML = `<div class="empty">
+      <div class="empty-icon">🏡</div>
+      <div class="empty-t">No listings match your filters</div>
+      <div class="empty-s">Try adjusting your preferences or daycare filters.</div>
+    </div>`;
+    return;
+  }
+
+  const activeDcs = S.visDaycares.length ? S.visDaycares : DAYCARES;
+  rbar.textContent = `${S.visHousing.length} listing${S.visHousing.length !== 1 ? 's' : ''} found`;
+
+  list.innerHTML = S.visHousing.map(h => {
+    const { dc, km } = nearestDc(h, activeDcs);
+    const color = dc ? (S.colorMap[dc.id] || '#999') : '#999';
+    const dist = (km * 0.621371).toFixed(1);
+    const active = h.id === S.selectedId ? ' active' : '';
+    const dcShortName = dc ? (dc.name.includes(',') ? dc.name.split(',')[0] : dc.name.split(' ').slice(0,3).join(' ')) : '—';
+    return `<div class="hcard${active}" id="card-${h.id}" onclick="selectHouse('${h.id}')">
+      <div class="hcard-img">
+        <img src="${cardSvgUrl(h.type, color)}" alt="">
+        <span class="hcard-badge">${h.type}</span>
+        <span class="hcard-dcbadge" style="background:${color}"></span>
+      </div>
+      <div class="hcard-body">
+        <div class="hcard-price">${fmtRent(h)}<span>/mo</span></div>
+        <div class="hcard-addr">${displayName(h)} · ${h.town}</div>
+        <div class="hcard-meta">
+          <span class="hcard-meta-item">🛏 ${h.bed} bed</span>
+          <span class="hcard-meta-item">📐 ${h.sqft}</span>
+          <span class="hcard-meta-item">🫧 ${h.washer}</span>
+        </div>
+        <div class="hcard-dc">
+          <span class="dc-dot" style="background:${color}"></span>
+          <span class="hcard-dc-name">${dcShortName} · ${dist} mi</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function updateLegend() {
+  const activeDcs = S.visDaycares.length ? S.visDaycares : DAYCARES;
+  // Only show daycares that are nearest to at least one visible house
+  const usedDcIds = new Set();
+  S.visHousing.forEach(h => {
+    const { dc } = nearestDc(h, activeDcs);
+    if (dc) usedDcIds.add(dc.id);
+  });
+
+  const rows = activeDcs
+    .filter(dc => usedDcIds.has(dc.id))
+    .map(dc => {
+      const color = S.colorMap[dc.id] || '#999';
+      const short = dc.name.length > 25 ? dc.name.slice(0,24) + '…' : dc.name;
+      return `<div class="legend-row">
+        <div class="legend-dot" style="background:${color}"></div>
+        <div class="legend-name" title="${dc.name}">${short}</div>
+      </div>`;
+    }).join('');
+
+  document.getElementById('legend-rows').innerHTML = rows || '<div style="font-size:0.68rem;color:#8A8078">No active daycares</div>';
+}
+
+function updatePrefChips() {
+  const p = S.prefs;
+  const chips = [];
+  if (p.typeChoice) chips.push(p.typeChoice === 'Either' ? '🏘 Any type' : (p.typeChoice === 'House' ? '🏠 House' : '🏢 Apartment'));
+  if (p.bedChoice)  chips.push(p.bedChoice === 'Either' ? '✨ 2–3 bed' : `🛏 ${p.bedChoice} bed`);
+  chips.push(`≤ ${fmtPrice(p.maxRent)}/mo`);
+  document.getElementById('pchips').innerHTML = chips.map(c => `<span class="pchip">${c}</span>`).join('');
+}
+
+function updateDcBadge() {
+  document.getElementById('dc-count-badge').textContent = S.visDaycares.length;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SELECT HOUSE
+// ═══════════════════════════════════════════════════════════════════
+function selectHouse(id) {
+  const prev = S.selectedId;
+  S.selectedId = id;
+  const house = HOUSING.find(h => h.id === id);
+  if (!house) return;
+
+  // Update card styles
+  if (prev) {
+    const prevCard = document.getElementById('card-' + prev);
+    if (prevCard) prevCard.classList.remove('active');
+    // Revert marker size
+    const { dc: prevDc } = nearestDc(HOUSING.find(h=>h.id===prev), S.visDaycares.length ? S.visDaycares : DAYCARES);
+    if (S.hMarkers[prev] && prevDc) {
+      S.hMarkers[prev].setIcon(houseIcon(S.colorMap[prevDc.id] || '#999', false));
+    }
+  }
+
+  const card = document.getElementById('card-' + id);
+  if (card) {
+    card.classList.add('active');
+    card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  const activeDcs = S.visDaycares.length ? S.visDaycares : DAYCARES;
+  const { dc } = nearestDc(house, activeDcs);
+  const color = dc ? (S.colorMap[dc.id] || '#999') : '#999';
+
+  // Update marker
+  if (S.hMarkers[id]) {
+    S.hMarkers[id].setIcon(houseIcon(color, true));
+  }
+
+  // Pan map
+  S.map.panTo([house.lat, house.lng], { animate: true, duration: 0.5 });
+
+  // Open popup
+  if (S.openPopupMarker) S.openPopupMarker.closePopup();
+
+  const dcShort = dc ? (dc.name.length > 30 ? dc.name.slice(0,29)+'…' : dc.name) : '—';
+  const dcDist = dc ? (kmBetween(house.lat,house.lng,dc.lat,dc.lng)*0.621371).toFixed(1) : '—';
+
+  const viewLink = house.link
+    ? `<a href="${house.link}" target="_blank" rel="noopener" style="font-size:0.7rem;color:var(--terra);text-decoration:none;font-weight:500;margin-left:auto;white-space:nowrap">View listing →</a>`
+    : '';
+  const notesHtml = house.notes
+    ? `<div style="font-size:0.68rem;color:var(--muted);margin-top:0.4rem;font-style:italic">${house.notes}</div>`
+    : '';
+
+  const popupHtml = `<div class="pu">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:0.5rem">
+      <div class="pu-price">${fmtRent(house)}<sup>/mo</sup></div>
+      ${viewLink}
+    </div>
+    <div class="pu-addr">${displayAddr(house)}</div>
+    <div class="pu-pills">
+      <span class="pu-pill">${house.type}</span>
+      <span class="pu-pill">${house.bed} bed</span>
+      <span class="pu-pill">${house.sqft}</span>
+      <span class="pu-pill">🫧 ${house.washer}</span>
+    </div>
+    <div class="pu-commute" id="pu-commute-${id}">
+      <span class="pulse"></span> Calculating commute…
+    </div>
+    <div class="pu-dc">
+      <span class="dc-dot" style="background:${color};width:8px;height:8px;border-radius:50%;flex-shrink:0;display:inline-block"></span>
+      Nearest daycare: ${dcShort} (${dcDist} mi)
+    </div>
+    ${notesHtml}
+    <div id="pu-onway-${id}"></div>
+  </div>`;
+
+  const marker = S.hMarkers[id];
+  if (marker) {
+    marker.bindPopup(popupHtml, { maxWidth: 280, autoPan: true, autoPanPaddingTopLeft: [50,50] }).openPopup();
+    S.openPopupMarker = marker;
+  }
+
+  // Fetch route
+  fetchRoute(house);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// OSRM ROUTING
+// ═══════════════════════════════════════════════════════════════════
+function clearRoute() {
+  // Abort any in-flight fetch so stale routes never draw
+  if (S.routeAbortCtrl) { S.routeAbortCtrl.abort(); S.routeAbortCtrl = null; }
+  if (S.routeLayer) { S.map.removeLayer(S.routeLayer); S.routeLayer = null; }
+  document.getElementById('commute-banner').classList.remove('on');
+}
+
+async function fetchRoute(house) {
+  clearRoute(); // cancels previous fetch + removes old layer
+
+  const ctrl = new AbortController();
+  S.routeAbortCtrl = ctrl;
+  const { signal } = ctrl;
+
+  const banner = document.getElementById('commute-banner');
+  banner.classList.add('on');
+  document.getElementById('commute-text').textContent = 'Calculating commute…';
+
+  try {
+    // ── 1. Main route: house → UMass ────────────────────────────────
+    const routeUrl = `https://router.project-osrm.org/route/v1/driving/${house.lng},${house.lat};${UMASS.lng},${UMASS.lat}?overview=full&geometries=geojson`;
+    const res  = await fetch(routeUrl, { signal });
+    const data = await res.json();
+
+    if (data.code !== 'Ok' || !data.routes.length) throw new Error('No route');
+
+    const route      = data.routes[0];
+    const directSecs = route.duration;
+    const mins       = Math.round(directSecs / 60);
+    const miles      = (route.distance * 0.000621371).toFixed(1);
+
+    // Draw route line
+    S.routeLayer = L.geoJSON(route.geometry, {
+      style: { color: '#B85C3A', weight: 3.5, opacity: 0.75 }
+    }).addTo(S.map);
+
+    document.getElementById('commute-text').textContent = `🚗 ${mins} min to UMass (${miles} mi)`;
+
+    const commuteEl = document.getElementById('pu-commute-' + house.id);
+    if (commuteEl) {
+      commuteEl.innerHTML = `<span style="color:var(--terra)">🚗</span> ${mins} min to UMass &nbsp;·&nbsp; ${miles} mi`;
+    }
+
+    // ── 2. On-the-way daycares (≤10 min detour) ─────────────────────
+    const onWay = await findOnWayDaycares(house, directSecs, signal);
+    const onwayEl = document.getElementById('pu-onway-' + house.id);
+    if (onwayEl) onwayEl.innerHTML = buildOnWayHtml(onWay);
+
+  } catch (e) {
+    if (e.name === 'AbortError') return; // user clicked a different property — silently stop
+    const commuteEl = document.getElementById('pu-commute-' + house.id);
+    document.getElementById('commute-text').textContent = 'Route unavailable';
+    if (commuteEl) commuteEl.innerHTML = '⚠ Commute info unavailable';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// DAYCARE SIDEBAR
+// ═══════════════════════════════════════════════════════════════════
+function toggleSidebar() {
+  const sb = document.getElementById('dcsidebar');
+  const btn = document.getElementById('dc-toggle-btn');
+  const isOpen = sb.classList.contains('on');
+  sb.classList.toggle('on', !isOpen);
+  btn.classList.toggle('on', !isOpen);
+}
+
+function setDcType(t) {
+  S.dcFilters.type = t;
+  ['all','family','center'].forEach(k => {
+    document.getElementById('dcf-'+k).classList.toggle('on', k === t);
+  });
+}
+
+
+
+function onDcAge(v) {
+  S.dcFilters.maxAge = +v;
+  document.getElementById('dcf-age-val').textContent = +v === 12 ? 'Any age' : `Age ${v}`;
+}
+
+function onDcPrice(v) {
+  S.dcFilters.maxPrice = +v;
+  document.getElementById('dcf-price-val').textContent = +v >= 3000 ? 'Any price' : `≤ $${(+v).toLocaleString()}/mo`;
+}
+
+function applyDcFilters() {
+  S.selectedId = null;
+  clearRoute();
+  applyAllFilters();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════
+loadData().then(() => renderObStep());
+</script>
+</body>
+</html>
