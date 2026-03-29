@@ -726,6 +726,7 @@ function applyAllFilters() {
 
   // Filter housing
   S.visHousing = HOUSING.filter(h => {
+    if (isNaN(h.lat) || isNaN(h.lng)) return false; // skip rows missing coordinates
     if (p.typeChoice && p.typeChoice !== 'Either') {
       // Townhome maps to the "House" category
       const cat = h.type === 'Townhome' ? 'House' : h.type;
