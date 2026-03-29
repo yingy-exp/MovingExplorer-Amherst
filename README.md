@@ -1,6 +1,9 @@
 # Nestmap — Amherst Housing & Daycare Finder
 
-An interactive map for UMass Amherst affiliates searching for housing with nearby daycare access. Filter listings by type, rent, and daycare preferences; click any property to see the driving commute to UMass and the nearest daycare options along the route.
+An interactive map for UMass Amherst affiliates searching for housing with nearby daycare access. Filter listings by type, rent, and daycare preferences. Click any property to see the driving commute to UMass and the nearest daycare options along the route.
+
+Click [here](https://yingy-exp.github.io/MovingExplorer-Amherst/) or visit https://yingy-exp.github.io/MovingExplorer-Amherst/ to play around.
+
 <img width="1540" height="812" alt="Screenshot 2026-03-29 at 10 03 04 AM" src="https://github.com/user-attachments/assets/59898481-4c61-4e8e-a705-777a371beef5" />
 
 ---
