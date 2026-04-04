@@ -404,8 +404,8 @@ function transformHousing(row, idx) {
 async function loadData() {
   const opts = { cache: 'no-store' };
   const [dcText, hText] = await Promise.all([
-    fetch('Databases/Daycare Amherst - Sheet1.csv', opts).then(r => r.text()),
-    fetch('Databases/Amherst Housing 2026 - Sheet1.csv', opts).then(r => r.text()),
+    fetch('Databases/Daycare Amherst.csv', opts).then(r => r.text()),
+    fetch('Databases/Amherst Housing 2026.csv', opts).then(r => r.text()),
   ]);
   DAYCARES = parseCSV(dcText).map(transformDaycare);
   HOUSING  = parseCSV(hText).map(transformHousing);
