@@ -31,7 +31,7 @@ USER_AGENT    = "nestmap-geocoder/1.0 (contact: wolfram)"
 RATE_LIMIT_S  = 1.1   # seconds between requests
 
 
-def geocode(address: str) -> tuple[float, float] | tuple[None, None]:
+def geocode(address: str):
     """Return (lat, lng) for an address string, or (None, None) on failure."""
     params = urllib.parse.urlencode({"q": address, "format": "json", "limit": 1})
     url    = f"{NOMINATIM_URL}?{params}"
@@ -46,7 +46,7 @@ def geocode(address: str) -> tuple[float, float] | tuple[None, None]:
     return None, None
 
 
-def build_address(row: dict) -> str | None:
+def build_address(row: dict):
     """
     Try to build a geocodable address string from a CSV row.
     Falls back to combining Address + Town if the address looks incomplete.
