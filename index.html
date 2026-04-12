@@ -183,7 +183,10 @@
     .sb-tog.on { border-color: var(--terra); background: var(--terra-lt); color: var(--terra); }
     .sb-val { font-family: 'Cormorant Garamond', serif; font-size: 1.25rem; color: var(--dark); text-align: center; margin-bottom: 0.4rem; }
     .sb-hint { font-size: 0.66rem; color: var(--muted); margin-top: 0.22rem; }
-    .sb-range-labels { display: flex; justify-content: space-between; font-size: 0.62rem; color: var(--muted); margin-top: 0.15rem; }
+    .sb-range-labels { position: relative; height: 1rem; font-size: 0.62rem; color: var(--muted); margin-top: 0.15rem; }
+    .sb-range-labels span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+    .sb-range-labels span:first-child { transform: translateX(0); }
+    .sb-range-labels span:last-child  { transform: translateX(-100%); }
     .sb-apply { margin-top: auto; padding-top: 1rem; }
     .sb-apply button { width: 100%; padding: 0.72rem; background: var(--terra); color: #fff; border: none; border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 0.88rem; font-weight: 600; cursor: pointer; transition: background 0.14s; }
     .sb-apply button:hover { background: var(--terra-dk); }
@@ -284,7 +287,12 @@
         <div class="sb-label">Child's age</div>
         <div class="sb-val" id="dcf-age-val">Any age</div>
         <input type="range" min="0" max="17" step="1" value="17" id="dcf-age" oninput="onDcAge(this.value)">
-        <div class="sb-range-labels"><span>0 mo</span><span>1 yr</span><span>5 yr</span><span>Any</span></div>
+        <div class="sb-range-labels">
+          <span style="left:0%">0 mo</span>
+          <span style="left:70.6%">1 yr</span>
+          <span style="left:94.1%">5 yr</span>
+          <span style="left:100%">Any</span>
+        </div>
         <div class="sb-hint">Show daycares that accept this age</div>
       </div>
 
