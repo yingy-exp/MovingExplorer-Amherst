@@ -183,6 +183,7 @@
     .sb-tog.on { border-color: var(--terra); background: var(--terra-lt); color: var(--terra); }
     .sb-val { font-family: 'Cormorant Garamond', serif; font-size: 1.25rem; color: var(--dark); text-align: center; margin-bottom: 0.4rem; }
     .sb-hint { font-size: 0.66rem; color: var(--muted); margin-top: 0.22rem; }
+    .sb-range-labels { display: flex; justify-content: space-between; font-size: 0.62rem; color: var(--muted); margin-top: 0.15rem; }
     .sb-apply { margin-top: auto; padding-top: 1rem; }
     .sb-apply button { width: 100%; padding: 0.72rem; background: var(--terra); color: #fff; border: none; border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 0.88rem; font-weight: 600; cursor: pointer; transition: background 0.14s; }
     .sb-apply button:hover { background: var(--terra-dk); }
@@ -282,7 +283,8 @@
       <div class="sb-group">
         <div class="sb-label">Child's age</div>
         <div class="sb-val" id="dcf-age-val">Any age</div>
-        <input type="range" min="0" max="12" step="1" value="12" id="dcf-age" oninput="onDcAge(this.value)">
+        <input type="range" min="0" max="17" step="1" value="17" id="dcf-age" oninput="onDcAge(this.value)">
+        <div class="sb-range-labels"><span>0 mo</span><span>1 yr</span><span>5 yr</span><span>Any</span></div>
         <div class="sb-hint">Show daycares that accept this age</div>
       </div>
 
@@ -418,7 +420,7 @@ async function loadData() {
 const S = {
   obStep: 0,
   prefs: { typeChoice: null, bedChoice: null, maxRent: 2500 },
-  dcFilters: { type: 'all', maxAge: 12, maxPrice: 3000 },
+  dcFilters: { type: 'all', maxAge: null, maxPrice: 3000 },
   selectedId: null,
   visHousing: [],
   visDaycares: [],
@@ -743,8 +745,8 @@ function applyAllFilters() {
     if (HIDDEN_TOWNS.has(dc.town)) return false;
     if (df.type === 'family' && dc.type !== 'Family Child Care') return false;
     if (df.type === 'center' && dc.type !== 'Large Group') return false;
-    // df.maxAge is the child's age; hide daycares whose age range doesn't include it
-    if (df.maxAge < 12 && (dc.minAge > df.maxAge || dc.maxAge < df.maxAge)) return false;
+    // df.maxAge is the child's age in years (null = any); hide daycares whose range doesn't include it
+    if (df.maxAge !== null && (dc.minAge > df.maxAge || dc.maxAge < df.maxAge)) return false;
     // price: skip daycares over budget; price=0 means unknown, always show
     if (df.maxPrice < 3000 && dc.price > 0 && dc.price > df.maxPrice) return false;
     return true;
@@ -1039,9 +1041,23 @@ function setDcType(t) {
 
 
 
+function sliderToAge(v) {
+  v = +v;
+  if (v === 17) return null;          // Any age
+  if (v < 12)  return v / 12;        // 0–11 → months as fraction of year
+  return v - 11;                      // 12–16 → years 1–5
+}
+
+function sliderToAgeLabel(v) {
+  v = +v;
+  if (v === 17) return 'Any age';
+  if (v < 12)  return v === 0 ? '0 months' : `${v} month${v === 1 ? '' : 's'}`;
+  return `${v - 11} year${(v - 11) === 1 ? '' : 's'}`;
+}
+
 function onDcAge(v) {
-  S.dcFilters.maxAge = +v;
-  document.getElementById('dcf-age-val').textContent = +v === 12 ? 'Any age' : `Age ${v}`;
+  S.dcFilters.maxAge = sliderToAge(v);
+  document.getElementById('dcf-age-val').textContent = sliderToAgeLabel(v);
 }
 
 function onDcPrice(v) {
